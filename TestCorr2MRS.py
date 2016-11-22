@@ -41,12 +41,12 @@ def plot_mwd(RA,Dec,org=0,title='Mollweide projection', projection='mollweide'):
     ax.grid(True)
     
     
-twomrsarr = twomrsarr.transpose()[twomrsarr[2]<0.02].transpose()
+twomrsarr = twomrsarr.transpose()[twomrsarr[2]<0.01].transpose()
 starburstarr = starburstarr.transpose()[starburstarr[2]<0.02].transpose()
 AGNS = AGNS.transpose()[AGNS[2]<0.02].transpose()
 
-#plot_mwd(twomrsarr[0], twomrsarr[1])
-#plt.show()
+plot_mwd(twomrsarr[0], twomrsarr[1], title="2MRS, z<0.01")
+plt.show()
 
 
 def scattomap(dec,ra, nside=16):
@@ -73,6 +73,6 @@ print b
 print c
 
 print d
-hp.mollview(twomap, title="2MRS , z<0.03")
+hp.mollview(twomap, title="2MRS , z<0.01")
 plt.show()
     

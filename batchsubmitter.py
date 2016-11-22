@@ -24,7 +24,7 @@ for gcut in [10, 15, 20]:
                         for fgo in flist:
                             jobname = jname+fgo[29:]+str(gcut)+str(sgcut)+str(tmzcut)+str(tmrscut)+str(diffcuts)+str(jcut)+'job'
                             fout = open(jobname+'.slurm', "w")
-                            jobline = 'python processor_WISE.py -f AllWISE/'+' -i '+fgo+' -g '+str(gcut)+' -s '+str(sgcut)+' -r 32 -m '+str(tmrscut)+' -z '+str(tmzcut)
+                            jobline = 'python processor_WISE.py -f AllWISE/'+' -i '+fgo+' -g '+str(gcut)+' -s '+str(sgcut)+' -r 32 -c -m '+str(tmrscut)+' -z '+str(tmzcut)
                             if diffcuts:
                                 jobline = jobline + ' -d '
                             if jcut:
@@ -34,5 +34,5 @@ for gcut in [10, 15, 20]:
                             fout.close()
                             os.system('chmod +x ' + jobname+'.slurm')
                             os.system('sbatch -p icecube '+ jobname+'.slurm')
-                        time.sleep(300)
+                            time.sleep(0.01)
                             #raw_input("Press Enter to Continue")
