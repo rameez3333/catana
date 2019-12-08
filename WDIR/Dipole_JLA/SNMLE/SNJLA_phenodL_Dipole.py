@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import interpolate, linalg, optimize
+import astropy.io.ascii as ascii
 from optparse import OptionParser
 from collections import OrderedDict
 import pickle
@@ -59,12 +60,48 @@ N=740 ; # Number of SNe
 CMBdipdec = options.NDEC
 CMBdipra = options.NRA
 
+def radectoxyz(RAdeg, DECdeg):
+    x = np.cos(DECdeg/(180./np.pi))*np.cos(RAdeg/(180./np.pi))
+    y = np.cos(DECdeg/(180./np.pi))*np.sin(RAdeg/(180./np.pi))
+    z = np.sin(DECdeg/(180./np.pi))
+
+    return np.array([x, y, z], dtype=np.float64)
+
+
+def get_dz(RAdeg, DECdeg):
+    
+    dzCMB = 371.e3/299792458
+    CMBcoordsRA = 168.01190437
+    CMBcoordsDEC = -6.98296811
+
+    CMBxyz = radectoxyz(CMBcoordsRA, CMBcoordsDEC)
+    inputxyz = radectoxyz(RAdeg, DECdeg)
+    
+    dz = dzCMB*np.dot(CMBxyz, inputxyz)
+    dv = dzCMB*np.dot(CMBxyz, inputxyz)*299792.458
+
+    return dz
+
+def get_zCMB(RAdeg, DECdeg, z_helio):
+    dz = -get_dz(RAdeg, DECdeg)
+
+    one_plus_z_pec = np.sqrt((1. + dz)/(1. - dz))
+    one_plus_z_CMB = (1 + z_helio)/one_plus_z_pec
+    return one_plus_z_CMB - 1.
+
+
+
 
 # Spline interpolation of luminosity distance
 # Interpolation.npy is a table calculated in Mathematica
 # The grid size can be seen from here: .01 between calculated points (in OM-OL space).
 # Only calculated for OM in [0,1.5], OL in [-.5,1.5]
 #interp = np.load( 'Interpolation.npy' )
+
+lcparams = ascii.read("jla_lcparams.txt")
+
+z_CMB_no_pec_vel = np.array([get_zCMB(lcparams["ra"][i], lcparams["dec"][i], lcparams["zhel"][i]) for i in range(len(lcparams["zhel"]))])
+
 Z = np.load( 'JLADirZInc.npy' ) ;
 Z[:,6][Z[:,6]<0.] = Z[:,6][Z[:,6]<0.] + 360.
 if options.REVB:
@@ -72,6 +109,11 @@ if options.REVB:
     jlarr = np.genfromtxt('../jla_likelihood_v6/data/jla_lcparams.txt', skip_header=1)
     Z[:,1] = Z[:,1] - jlarr[:,-1]
     ofname = ofname+'RB'
+    
+
+Z = np.vstack([Z.transpose(), z_CMB_no_pec_vel]).transpose()
+
+
 #Same as JLA.npy, but with additional columns [6] is RAdeg, [7] is DECdeg, [8] is Zcmb, [9] is Zhel
 #Jeppe used Zcmb, rounded ([0])
 #z=Z.transpose()[0]
@@ -96,7 +138,6 @@ def MU( OM, OL ):
 def MUZ(Zc, Q0, J0):
     k = 5.*np.log10( c/H0 * dLPhenoF3(Zc, Q0, J0)) + 25.   
     if np.any(np.isnan(k)) or np.any(np.isinf(k)):
-        #print 'Fuck', Q0, J0, OK
         #print np.min(Zc[np.isnan(k)]), np.max(Zc[np.isnan(k)]), len(Zc[np.isnan(k)])
         k[np.isnan(k)] = 63000.15861331456834
         k[np.isinf(k)] = 630000.15661331456834
@@ -143,7 +184,7 @@ else:
 ZINDEX=9
 if options.FZCMB:
     ofname = ofname + '_FZCMB'
-    ZINDEX = 0
+    ZINDEX = 10
 
 #covmatcomponents = [ "cal", "model", "bias", "dust", "sigmaz", "sigmalens", "nonia" ]
 
@@ -353,7 +394,7 @@ if options.DET ==3:
 
 
 if options.DET ==4:
-    bnds = bnds + ((-25., 25.), (0, 1.5))
+    bnds = bnds + ((-25., 25.), (0.01, 1.5))
     defBF = [-8.0, 0.03]
     rads = np.linspace(0., 10., 300)
     pre_found_best = np.hstack([pre_found_best, defBF])
